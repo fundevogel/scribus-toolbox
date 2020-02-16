@@ -15,13 +15,32 @@
 ##
 
 import argparse
+import glob
 import os
 import sys
-import subprocess
+
 from slugify import slugify
 
 from lib.hermes import create_mail
 from lib.thoth import get_booklist
+
+
+def count_lines(file_path):
+    with open(file_path) as file:
+        for index, line in enumerate(file):
+            pass
+
+    return index + 1
+
+
+def total_lines(files):
+    number_list = []
+
+    for file in files:
+        number_list.append(count_lines(file) - 1)
+
+    return sum(number_list)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -38,13 +57,13 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    dist_dir = os.path.dirname(os.path.dirname(args.input))
+    mail_dir = dist_dir + '/mails/'
+
     # Getting total number of books
     # (1) .. from CSV
-    here = os.path.dirname(os.path.realpath(__file__))
-    csv_path = os.path.dirname(args.input)
-    total_csv_books = int(subprocess.check_output(
-        'bash ' + here + '/count_books.bash ' + csv_path, shell=True
-    ))
+    csv_files = glob.glob(dist_dir + '/csv/*.csv')
+    total_csv_books = total_lines(csv_files)
 
     # (2) .. from SLA
     book_list = get_booklist(args.input)
@@ -68,23 +87,22 @@ if __name__ == "__main__":
     publishers = [publisher for index, publisher in enumerate(
         publishers) if index == publishers.index(publisher)]
 
-    for publisher in publishers:
-        print publisher + ':'
+    with open(dist_dir + '/overview.txt', 'w') as file:
+        for publisher in publishers:
+            file.write(publisher + ':\n')
 
-        for book in book_list:
-            if book[1] == publisher:
-                author = book[2]
-                title = book[3]
-                page_number = book[4]
+            for book in book_list:
+                if book[1] == publisher:
+                    author = book[2]
+                    title = book[3]
+                    page_number = book[4]
 
-                print(
-                    author + ' - "' + title + '" auf Seite ' + str(page_number)
-                )
+                    file.write(
+                        author + ' - "' + title + '" auf Seite ' +
+                        str(page_number) + '\n'
+                    )
 
-        print('\n')
-
-    file_dir = os.path.dirname(os.path.dirname(args.input))
-    mail_dir = file_dir + '/mails/'
+            file.write('\n')
 
     for publisher in publishers:
         publisher_books = []
