@@ -8,16 +8,12 @@
 #
 ##
 
-issue="$1"
+issue=$1
 
 root_directory=$(dirname "$(dirname "$0")")
 cd "$root_directory"/issues/"$issue"/src/csv || exit
 
 while IFS= read -r isbn; do
-
-    # Remove surrounding quotes
-    isbn="${isbn%\"}"
-    isbn="${isbn#\"}"
 
     # Search for files containing ISBN, remove those without
     duplicates=$(grep -c "$isbn" ./*.csv | sed "/0/d")
@@ -45,16 +41,7 @@ while IFS= read -r isbn; do
 
     fi
 
-# Inject ISBNs found across all `.csv` files
-done < <(awk -F ";" '{ print $4 }' ./*.csv | sort | uniq)
-
-
-##
-# Or, to look at those manually:
-#
-# awk '_[$0]++' *.csv > dupes.txt
-# awk -F ";" '{ print $4 }' dupes.txt
-# column -s\; -t < dupes.txt | less -#2 -N -S
-#
-# .. but why bother, right?
-##
+# (1) & (2) Inject ISBNs from all `.csv` files
+# (3) Sort them
+# (4) Remove duplicates
+done < <(cat ./*.csv | csvcut -d ";" -c 4 -e latin1 | sort | uniq)
