@@ -48,7 +48,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--input", help="File being processed for ISBNs"
+        "--input", help="SLA file being processed for ISBNs"
     )
 
     parser.add_argument(
@@ -89,6 +89,8 @@ if __name__ == "__main__":
 
     with open(dist_dir + '/overview.txt', 'w') as file:
         for publisher in publishers:
+            publisher_books = []
+
             file.write(publisher + ':\n')
 
             for book in book_list:
@@ -97,6 +99,11 @@ if __name__ == "__main__":
                     title = book[3]
                     page_number = book[4]
 
+                    publisher_books.append(
+                        author + ' - "' + title + '" auf Seite ' +
+                        str(page_number) + '<br>'
+                    )
+
                     file.write(
                         author + ' - "' + title + '" auf Seite ' +
                         str(page_number) + '\n'
@@ -104,22 +111,8 @@ if __name__ == "__main__":
 
             file.write('\n')
 
-    for publisher in publishers:
-        publisher_books = []
-
-        for book in book_list:
-            if book[1] == publisher:
-                author = book[2]
-                title = book[3]
-                page_number = book[4]
-
-                publisher_books.append(
-                    author + ' - "' + title + '" auf Seite ' +
-                    str(page_number) + '<br>'
-                )
-
-        create_mail(
-            output_file=mail_dir + slugify(publisher) + '.eml',
-            subject=args.subject,
-            text='\n'.join(publisher_books)
-        )
+            create_mail(
+                output_file=mail_dir + slugify(publisher) + '.eml',
+                subject=args.subject,
+                text='\n'.join(publisher_books)
+            )
