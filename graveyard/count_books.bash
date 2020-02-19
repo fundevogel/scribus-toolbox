@@ -8,12 +8,14 @@
 #
 ##
 
-path="$1"
+issue=$1
 
-cd "$path/../csv" || exit
+root_directory=$(dirname "$(dirname "$0")")
+cd "$root_directory"/issues/"$issue"/dist/csv || exit
 
-entries=$(cat ./*.csv | wc -l)
+# shellcheck disable=SC2012
 headers=$(ls | wc -l)
+entries=$(cat ./*.csv | wc -l)
 
 total=$(("$entries" - "$headers"))
 

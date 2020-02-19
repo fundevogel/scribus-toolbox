@@ -5,7 +5,7 @@
 # Replaces all instances in a file with the current year
 #
 # Usage:
-# python file.txt --pattern %YEAR%
+# python document.sla --pattern %%YEAR%%
 #
 # License: MIT
 # (c) Martin Folkers
