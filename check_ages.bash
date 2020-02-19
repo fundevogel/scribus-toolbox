@@ -21,4 +21,5 @@ while IFS= read -r isbn; do
 # (1) Inject all lines containing strings indicating improper age recommendation
 # (2) Choose only entries from 'ISBN' and 'Age recommendation' columns
 # (3) Select first part of resulting string, being the ISBN
-done < <(grep -h "Keine Altersangabe\|bis" ./*.csv | csvcut -c 8,9 | cut -d "," -f 1)
+# (4) Remove duplicates
+done < <(grep -h "Keine Altersangabe\|bis" ./*.csv | csvcut -c 8,9 | cut -d "," -f 1 | uniq)
