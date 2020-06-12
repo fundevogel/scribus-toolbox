@@ -4,7 +4,7 @@
 # Replaces all instances of '%%YEAR%%' with the current year
 #
 # Usage:
-# bash replace-year.bash `ISSUE`
+# bash replace_year.bash `ISSUE`
 #
 ##
 

@@ -14,9 +14,8 @@
 # (c) Martin Folkers
 ##
 
-import argparse
-import os
 import scribus
+import argparse
 
 parser = argparse.ArgumentParser(
     description="Generates PDF file from a given SLA file - quick & dirty"
@@ -39,7 +38,7 @@ if __name__ == "__main__":
     scribus.openDoc(args.input)
     pdf = scribus.PDFfile()
 
-    file_name = os.path.splitext(scribus.getDocName())[0] + ".pdf"
+    file_name = scribus.getDocName()[:-3] + 'pdf'
 
     if args.output is not None:
         file_name = args.output

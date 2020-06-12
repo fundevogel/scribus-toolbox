@@ -8,12 +8,13 @@
 # see https://wiki.scribus.net/canvas/Automatic_Scripter_Commands_list
 #
 # Usage:
-# scribus -g -py import-pages.py base_file.sla import_file.sla
+# scribus -g -py import-pages.py base_file.sla import_pages.sla
 #
 # License: MIT
 # (c) Martin Folkers
 ##
 
+import os
 import scribus
 import argparse
 
@@ -45,7 +46,7 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--output",
+    "--output", default=None,
     help="Creates new SLA file under specified path",
 )
 
@@ -62,12 +63,18 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Variables
-    base_file = args.files[0]
-    import_file = args.files[1]
+    base_file = os.path.abspath(args.files[0])
+    import_file = os.path.abspath(args.files[1])
     page_number = args.page - 1
     insert_position = 0 if args.before is True else 1  # 0 = before; 1 = after
     master_page = args.masterpage
     total_pages = get_pages_range(import_file)
+
+    # Output path
+    output_file = args.output
+
+    if output_file is not None:
+        output_file = os.path.abspath(args.output)
 
     # Importing `import_file`
     scribus.openDoc(base_file)
@@ -79,11 +86,11 @@ if __name__ == "__main__":
     for number in range(page_number + 2, page_number + len(total_pages) + 2):
         scribus.applyMasterPage(master_page, number)
 
-    # Either overwriting `import_file` ..
-    if args.output is None:
+    # Either overwriting `base_file` ..
+    if output_file is None:
         scribus.saveDoc()
     # .. or creating new `output` file (requires `--output`)
     else:
-        scribus.saveDocAs(args.output)
+        scribus.saveDocAs(output_file)
 
     scribus.closeDoc()

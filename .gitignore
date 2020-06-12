@@ -1,2 +1,3 @@
-lib/example.py
-test
+/lib/example.py
+/test
+/vendor

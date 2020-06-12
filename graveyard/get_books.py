@@ -52,13 +52,14 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--subject", help="Subject"
+        "--subject", default="",
+        help="Subject"
     )
 
     args = parser.parse_args()
 
     dist_dir = os.path.dirname(os.path.dirname(args.input))
-    mail_dir = dist_dir + '/mails/'
+    mail_dir = dist_dir + '/documents/mails/'
 
     # Getting total number of books
     # (1) .. from CSV
@@ -82,12 +83,20 @@ if __name__ == "__main__":
 
         sys.exit()
 
-    # Extract
-    publishers = [book[1] for book in book_list]
+    # Extract publishers
+    publishers = sorted([book[1] for book in book_list])
+
+    for publisher in publishers:
+        print(publisher)
+
+    # Remove duplicates
     publishers = [publisher for index, publisher in enumerate(
         publishers) if index == publishers.index(publisher)]
 
-    with open(dist_dir + '/overview.txt', 'w') as file:
+    for publisher in publishers:
+        print(publisher)
+
+    with open(os.path.abspath(dist_dir + '/../meta/summary.txt'), 'w') as file:
         for publisher in publishers:
             publisher_books = []
 

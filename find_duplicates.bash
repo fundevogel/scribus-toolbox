@@ -13,6 +13,9 @@ issue=$1
 root_directory=$(dirname "$(dirname "$0")")
 cd "$root_directory"/issues/"$issue"/src/csv || exit
 
+newline=$'\n'
+result="Results:${newline}"
+
 while IFS= read -r isbn; do
 
     # Search for files containing ISBN, remove those without
@@ -36,8 +39,8 @@ while IFS= read -r isbn; do
         # (3) Replace './' with ' & '
         files=${files//.\//\ &\ }
 
-        # (4) Print the result
-        printf "Duplicate found for %s in %s\\n" "$isbn" "$files"
+        # (4) Save result
+        result+="Duplicate found for $isbn in $files${newline}"
 
     fi
 
@@ -45,3 +48,15 @@ while IFS= read -r isbn; do
 # (3) Sort them
 # (4) Remove duplicates
 done < <(cat ./*.csv | csvcut -d ";" -c 4 -e latin1 | sort | uniq)
+
+
+file=../../meta/duplicates.txt
+
+# Check if duplicate report exists ..
+if [ -f $file ]; then
+    # .. if it does, just `echo` results
+    echo "$result"
+else
+    # .. if it doesn't, then `printf` results to file
+    echo "$result" >$file
+fi
