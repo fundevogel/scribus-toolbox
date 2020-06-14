@@ -15,6 +15,8 @@ root_directory=$(dirname "$(dirname "$0")")
 mkdir -p "$root_directory"/issues/"$issue"
 cd "$root_directory"/issues/"$issue" || exit
 
+# Preparing directory structure
+# (1) Generate skeleton
 for dir in src/csv \
            src/templates \
            meta \
@@ -28,6 +30,7 @@ do
     mkdir -p "$dir"
 done
 
+# (2) Move & convert CSV (if it exists)
 if [ -d "../../$issue" ]; then
     mv "../../$issue" src/csv/master
 
