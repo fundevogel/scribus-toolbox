@@ -14,7 +14,7 @@ root_directory=$(dirname "$(dirname "$0")")
 cd "$root_directory"/issues/"$issue"/dist/csv || exit
 
 newline=$'\n'
-result="Results:${newline}"
+result=""
 
 while IFS= read -r line; do
     # Extract ISBN & age rating
@@ -22,19 +22,21 @@ while IFS= read -r line; do
     age_rating=$(echo "$line" | cut -d "," -f 2)
 
     # Save result
-    result+="Found improper age recommendation for $isbn: $age_rating${newline}"
+    result+="Improper age rating for $isbn: $age_rating${newline}"
 
 # (1) Inject all `.csv` files
-# (2) Choose only entries from 'ISBN' and 'Age recommendation' columns
-# (3) Select lines containing strings indicating improper age recommendation
+# (2) Choose only entries from 'ISBN' and 'age recommendation' columns
+# (3) Select lines containing strings indicating improper age ratings
 # (4) Remove duplicates
-done < <(cat ./*.csv | csvcut -c 8,9 | grep "Altersangabe\|bis" | uniq)
+done < <(cat -- *.csv | csvcut -c ISBN,Altersempfehlung | grep "Altersangabe\|bis" | uniq | sed "/ISBN,Altersempfehlung/d")
 
 
 file=../../meta/age-ratings.txt
 
-# Check if age ratings report exists ..
-if [ ! -f $file ]; then
-    # .. if it does, then `printf` results to file
-    echo "$result" >$file
+# Check if improper age ratings exists ..
+if [ -z "$result" ]; then
+    # .. otherwise there isn't anything to report back, really
+    result="No improper age ratings found!"
 fi
+
+echo "$result" >$file
