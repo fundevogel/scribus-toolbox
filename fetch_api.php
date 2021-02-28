@@ -26,13 +26,20 @@ foreach (glob($src . '/csv/*.csv') as $csvFile) {
     # Load raw CSV file from 'Titelexport'
     $csvArray = Butler::csv2array($csvFile, ';');
 
-    # Load list of ISBNs to be blocked per category,
-    # for example because they exist twice
+    # Load list of ISBNs to be blocked per category, useful if they exist twice
     $blocklist = [];
 
-    if (file_exists($blockFile = realpath('issues/' . $issue . '/meta/blockList.json'))) {
+    if (file_exists($blockFile = realpath('issues/' . $issue . '/config/block-list.json'))) {
         $blockList = file_get_contents($blockFile);
         $blockList = json_decode($blockList, true);
+    }
+
+    # Load list of age recommendations, replacing improper ones
+    $properAges = [];
+
+    if (file_exists($ageFile = realpath('issues/' . $issue . '/config/proper-ages.json'))) {
+        $properAges = file_get_contents($ageFile);
+        $properAges = json_decode($properAges, true);
     }
 
     $isbns = [];
@@ -92,14 +99,19 @@ foreach (glob($src . '/csv/*.csv') as $csvFile) {
             if ($cover && file_exists($imagePath . '/' . $imageName . '.jpg')) {
                 $node['@Cover'] = $imageName . '.jpg';
             }
-
-            # Detect empty age recommendation
-            if ($node['Altersempfehlung'] === '') {
-                $node['Altersempfehlung'] = 'Keine Altersangabe';
-            }
         } catch (\Exception $e) {
             # TODO: Add data from $csvData as backup
             continue;
+        }
+
+        # Detect empty age recommendation
+        if ($node['Altersempfehlung'] === '') {
+            $node['Altersempfehlung'] = 'Keine Altersangabe';
+        }
+
+        # Replace improper age recommendation
+        if (isset($properAges[$isbn])) {
+            $node['Altersempfehlung'] = $properAges[$isbn];
         }
 
         $isbns[] = $isbn;

@@ -17,9 +17,10 @@ cd "$root_directory"/issues/"$issue" || exit
 
 # Preparing directory structure
 # (1) Generate skeleton
-for dir in src/csv \
-           src/templates \
+for dir in config \
            meta \
+           src/csv \
+           src/templates \
            dist/csv \
            dist/images \
            dist/images \
@@ -30,8 +31,9 @@ do
     mkdir -p "$dir"
 done
 
-# (2) Copy blocklist
-cp ../../shared/blockList.json meta/
+# (2) Copy blocklist & proper ages skeletons
+cp ../../shared/block-list.json config/
+cp ../../shared/proper-ages.json config/
 
 # (3) Convert CSV (if present)
 if [ -d ../../"$issue" ]; then
