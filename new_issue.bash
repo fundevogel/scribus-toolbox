@@ -30,12 +30,16 @@ do
     mkdir -p "$dir"
 done
 
-# (2) Move & convert CSV (if it exists)
-if [ -d "../../$issue" ]; then
-    mv "../../$issue" src/csv/master
+# (2) Copy blocklist
+cp ../../shared/blockList.json meta/
 
-    for file in src/csv/master/*.csv; do
+# (3) Convert CSV (if present)
+if [ -d ../../"$issue" ]; then
+
+    for file in ../../"$issue"/*.csv; do
         base_name=$(basename "$file")
-        iconv --from-code=ISO8859-1 --to-code=UTF-8 "$file" | tr -d '\015' > "src/csv/$base_name"
+        iconv --from-code=ISO8859-1 --to-code=UTF-8 "$file" | tr -d '\015' > src/csv/"$base_name"
     done
+
+    rm -rf ../../"$issue"
 fi
