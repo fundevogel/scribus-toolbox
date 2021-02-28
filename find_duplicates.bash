@@ -11,15 +11,14 @@
 issue=$1
 
 root_directory=$(dirname "$(dirname "$0")")
-cd "$root_directory"/issues/"$issue"/src/csv || exit
+cd "$root_directory"/issues/"$issue"/dist/csv || exit
 
 newline=$'\n'
-result="Results:${newline}"
+result=""
 
 while IFS= read -r isbn; do
-
     # Search for files containing ISBN, remove those without
-    duplicates=$(grep -c "$isbn" ./*.csv | sed "/0/d")
+    duplicates=$(grep -c "$isbn" ./*.csv | sed "/:0/d")
 
     # Check occurences per file ..
     perfile="${duplicates: -1}"
@@ -41,22 +40,20 @@ while IFS= read -r isbn; do
 
         # (4) Save result
         result+="Duplicate found for $isbn in $files${newline}"
-
     fi
 
 # (1) & (2) Inject ISBNs from all `.csv` files
 # (3) Sort them
 # (4) Remove duplicates
-done < <(cat ./*.csv | csvcut -d ";" -c 4 -e latin1 | sort | uniq)
+done < <(cat -- *.csv | csvcut -d "," -c ISBN | sort | uniq | sed '/ISBN/d')
 
 
 file=../../meta/duplicates.txt
 
-# Check if duplicate report exists ..
-if [ -f $file ]; then
-    # .. if it does, just `echo` results
-    echo "$result"
-else
-    # .. if it doesn't, then `printf` results to file
-    echo "$result" >$file
+# Check if duplicates exists ..
+if [ -z "$result" ]; then
+    # .. otherwise there isn't anything to report back, really
+    result="No duplicates found!"
 fi
+
+echo "$result" >$file
