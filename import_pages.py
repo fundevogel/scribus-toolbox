@@ -83,8 +83,9 @@ if __name__ == "__main__":
     )
 
     # Applying masterpage(s)
-    for number in range(page_number + 2, page_number + len(total_pages) + 2):
-        scribus.applyMasterPage(master_page, number)
+    if master_page is not None:
+        for number in range(page_number + 2, page_number + len(total_pages) + 2):
+            scribus.applyMasterPage(master_page, number)
 
     # Either overwriting `base_file` ..
     if output_file is None:
