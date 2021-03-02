@@ -72,7 +72,7 @@ def get_booklist(input_file):
         csv_data = pandas.read_csv(csv_file, index_col=None, header=0)
         csv_list.append(csv_data)
 
-    books_data = pandas.concat(csv_list, axis=0, ignore_index=True)
+    books_data = pandas.concat(csv_list, axis=0, ignore_index=True, sort=True)
     data_frame = pandas.DataFrame(
         books_data, columns=['ISBN', 'Verlag', 'AutorIn', 'Titel']
     )
