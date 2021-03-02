@@ -15,7 +15,7 @@ from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-import lib.example as example
+import scripts.lib.example as example
 
 
 def get_rfc2822_date():
