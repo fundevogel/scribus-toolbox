@@ -24,7 +24,7 @@ $object = new Pcbis\Webservice($credentials, $dist . '/.cache');
 
 foreach (glob($src . '/csv/*.csv') as $csvFile) {
     # Load raw CSV file from 'Titelexport'
-    $csvArray = Butler::csv2array($csvFile, ';');
+    $csvArray = Pcbis\Spreadsheets::csv2array($csvFile, ';');
 
     # Load list of ISBNs to be blocked per category, useful if they exist twice
     $blocklist = [];
@@ -121,5 +121,5 @@ foreach (glob($src . '/csv/*.csv') as $csvFile) {
     $sorted = Butler::sort($data, 'AutorIn', 'asc');
 
     # Create updated CSV file
-    Butler::array2csv($sorted, $dist . '/csv/' . basename($csvFile));
+    Pcbis\Spreadsheets::array2csv($sorted, $dist . '/csv/' . basename($csvFile));
 }
