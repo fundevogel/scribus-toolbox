@@ -4,122 +4,240 @@
 
 require_once('vendor/autoload.php');
 
+use Pcbis\Webservice;
 use Pcbis\Helpers\Butler;
 
-if (!isset($argv[1])) {
-    throw new Exception('No issue identifier provided!');
-}
 
-$issue = $argv[1];
+class FetchApi
+{
+    /**
+     * Current issue
+     *
+     * @var string
+     */
+    private $issue;
 
-$src   = realpath('issues/' . $issue . '/src');
-$dist  = realpath('issues/' . $issue . '/dist');
 
-# Authenticate with KNV's API
-$credentials = file_get_contents('knv.login.json');
-$credentials = json_decode($credentials, true);
+    /**
+     * Source path
+     *
+     * @var string
+     */
+    private $root;
 
-# Initialize & set data cache path
-$object = new Pcbis\Webservice($credentials, $dist . '/.cache');
 
-foreach (glob($src . '/csv/*.csv') as $csvFile) {
-    # Load raw CSV file from 'Titelexport'
-    $csvArray = Pcbis\Spreadsheets::csv2array($csvFile, ';');
+    /**
+     * Destination path
+     *
+     * @var string
+     */
+    private $dist;
 
-    # Load list of ISBNs to be blocked per category, useful if they exist twice
-    $blocklist = [];
 
-    if (file_exists($blockFile = realpath('issues/' . $issue . '/config/block-list.json'))) {
-        $blockList = file_get_contents($blockFile);
-        $blockList = json_decode($blockList, true);
-    }
+    /**
+     * CSV source files
+     *
+     * @var array
+     */
+    private $files;
 
-    # Load list of age recommendations, replacing improper ones
-    $properAges = [];
 
-    if (file_exists($ageFile = realpath('issues/' . $issue . '/config/proper-ages.json'))) {
-        $properAges = file_get_contents($ageFile);
-        $properAges = json_decode($properAges, true);
-    }
+    /**
+     * Per-category blocklist
+     *
+     * @var array
+     */
+    private $blockList = [];
 
-    $isbns = [];
-    $data  = [];
 
-    # Get category
-    $category = basename(explode('.', $csvFile)[0]);
+    /**
+     * Suitable age recommendations
+     *
+     * @var array
+     */
+    private $properAges = [];
 
-    # Retrieve data for every book
-    foreach ($csvArray as $csvData) {
-        $isbn = $csvData['ISBN'];
 
-        # Skip duplicate ISBNs
-        if (in_array($isbn, $isbns)) {
-            continue;
+    /**
+     * Object granting access to KNV's API
+     *
+     * @var \Pcbis\Webservice
+     */
+    private $api = null;
+
+
+    /**
+     * Constructor
+     *
+     * @param string $issue Current issue
+     * @return void
+     */
+    public function __construct(string $issue = null)
+    {
+        # Determine issue
+        if (!isset($issue)) {
+            $year = date('Y');
+
+            $issue = date('m') <= '06'
+                ? $year . '-01'
+                : $year . '-02'
+            ;
         }
 
-        # Skip blocked ISBNs
-        if (isset($blockList[$category]) && in_array($isbn, $blockList[$category])) {
-            continue;
+        $this->issue = $issue;
+
+        # Set paths
+        # (1) Base path
+        $this->base = realpath(__DIR__ . '/../issues/' . $issue);
+
+        # (2) Source & destination path
+        $this->root = $this->base . '/src';
+        $this->dist = $this->base . '/dist';
+
+        # Determine source files
+        $this->files = glob($this->root . '/csv/*.csv');
+
+        # Fetch modifications
+        # (1) Load list of ISBNs to be blocked per category, useful if they exist twice
+        if (file_exists($blockListFile = $this->dist . '/config/block-list.json')) {
+            $this->blockList = json_decode(file_get_contents($blockListFile), true);
         }
 
-        # Provide base information first
-        # This is necessary when detecting improper age rating,
-        # since books & audiobooks have different columns
-        $node = [
-            'ISBN'                => $isbn,
-            'Titel'               => '',
-            'Untertitel'          => '',
-            'Preis'               => '',
-            'Erscheinungsjahr'    => '',
-            'Altersempfehlung'    => '',
-            'Inhaltsbeschreibung' => '',
-            'AutorIn'             => $csvData['AutorIn'],
-        ];
+        # (2) Load list of age recommendations, replacing improper ones
+        if (file_exists($properAgesFile = $this->dist . '/config/proper-ages.json')) {
+            $this->properAges = json_decode(file_get_contents($properAgesFile), true);
+        }
 
-        try {
-            # Fetch bibliographic data from API
-            $book = $object->load($isbn);
-            $bookData = $book->export();
+        # Authenticate with KNV's API
+        # (1) Load credentials
+        $credentials = json_decode(file_get_contents(__DIR__ . '/../login.json'), true);
 
-            # Prevent comma-separated `author` being overridden
-            unset($bookData['AutorIn']);
+        # (2) Initialize API
+        $this->api = new Webservice($credentials, $this->dist . '/.cache');
+    }
 
-            $node = array_merge($node, $bookData);
 
-            # Set image path
-            $imagePath = $dist . '/images';
-            $book->setImagePath($imagePath);
+    /**
+     * Main function
+     *
+     * @return void
+     */
+    public function run(): void
+    {
+        foreach ($this->files as $file) {
+            # Load raw CSV file as exported via pcbis.de
+            $raw = Pcbis\Spreadsheets::csv2array($file, ';');
 
-            # Download book cover
-            $imageName = Butler::slug($book->title());
-            $cover = $book->downloadCover($imageName);
+            # Determine category
+            $category = basename(explode('.', $file)[0]);
 
-            $node['@Cover'] = '';
+            $data  = [];
 
-            if ($cover && file_exists($imagePath . '/' . $imageName . '.jpg')) {
-                $node['@Cover'] = $imageName . '.jpg';
+            # Retrieve data for every book
+            foreach ($raw as $item) {
+                # Skip blocked ISBNs
+                if (isset($this->blockList[$category]) && in_array($item['ISBN'], $this->blockList[$category])) {
+                    continue;
+                }
+
+                echo sprintf('Processing "%s":', $item['ISBN']);
+                echo "\n";
+
+                # Provide base information first
+                # This is necessary when detecting improper age rating,
+                # since books & audiobooks have different columns
+                $node = [
+                    'ISBN' => $item['ISBN'],
+                    'AutorIn' => '',
+                    'Titel' => '',
+                    'Untertitel' => '',
+                    'Preis' => '',
+                    'Erscheinungsjahr' => '',
+                    'Altersempfehlung' => '',
+                    'Inhaltsbeschreibung' => '',
+                ];
+
+                echo 'Fetching data from API ..';
+
+                try {
+                    # Combine spreadsheet & API data
+                    # (1) Fetch bibliographic data from API
+                    $book = $this->api->load($item['ISBN']);
+
+                    # (2) Merge both data sources
+                    $node = array_merge($node, $book->export());
+
+                    # Apply individual changes
+                    # (1) Keep comma-separated author (for sorting)
+                    $node['order'] = $item['AutorIn'];
+
+                    # (2) Store all available descriptions as string
+                    $node['Inhaltsbeschreibung'] = Butler::join($book->description(true), "\n");
+
+                } catch (\Exception $e) {
+                    # Add data from spreadsheet in case of failure
+                    $node['AutorIn'] = Butler::reverseName($item['AutorIn']);
+                    $node['Titel'] = $item['Titel'];
+                    $node['Preis'] = $item['Preis'];
+                    $node['Erscheinungsjahr'] = $item['Erscheinungsjahr'];
+                    $node['Altersempfehlung'] = $item['Altersempfehlung'];
+                }
+
+                # Handle age recommendations ..
+                # (1) .. that are empty
+                if ($node['Altersempfehlung'] === '') {
+                    $node['Altersempfehlung'] = 'Keine Altersangabe';
+                }
+
+                # (2) .. that are ambiguous
+                if (isset($this->properAges[$item['ISBN']])) {
+                    $node['Altersempfehlung'] = $this->properAges[$item['ISBN']];
+                }
+
+                echo ' done.';
+                echo "\n";
+
+                echo 'Downloading cover ..';
+
+                # Download book cover
+                # (1) Set download path
+                $book->setImagePath($this->dist . '/images');
+
+                # (2) Download image file
+                $imageName = Butler::slug($book->title());
+
+                # (3) Store file name for later use ..
+                $node['@Cover'] = $book->downloadCover($imageName)
+                    # ..if download is successful
+                    ? $imageName . '.jpg'
+                    : ''
+                ;
+
+                echo ' done.';
+                echo "\n";
+
+                # Store data record
+                $data[]  = $node;
+
+                echo 'Process complete!';
+                echo "\n";
+                echo "\n";
             }
-        } catch (\Exception $e) {
-            # TODO: Add data from $csvData as backup
-            continue;
-        }
 
-        # Detect empty age recommendation
-        if ($node['Altersempfehlung'] === '') {
-            $node['Altersempfehlung'] = 'Keine Altersangabe';
-        }
+            # Sort by author's last name
+            $data = Butler::sort($data, 'order', 'asc');
 
-        # Replace improper age recommendation
-        if (isset($properAges[$isbn])) {
-            $node['Altersempfehlung'] = $properAges[$isbn];
+            # Create updated CSV file
+            Pcbis\Spreadsheets::array2csv($data, $this->dist . '/csv/' . basename($file));
         }
-
-        $isbns[] = $isbn;
-        $data[]  = $node;
     }
-
-    $sorted = Butler::sort($data, 'AutorIn', 'asc');
-
-    # Create updated CSV file
-    Pcbis\Spreadsheets::array2csv($sorted, $dist . '/csv/' . basename($csvFile));
 }
+
+
+$issue = null;
+
+if (isset($argv[1])) {
+    $issue = $argv[1];
+}
+
+$object = (new FetchApi($issue))->run();
